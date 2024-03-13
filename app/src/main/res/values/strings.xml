@@ -5,4 +5,7 @@
     <string name="pitch_control">Pitch control</string>
     <string name="frequency">Frequency value</string>
     <string name="frequency_value">%.1f Hz</string>
+
+    <string name="play">Play</string>
+    <string name="stop">Stop</string>
 </resources>
