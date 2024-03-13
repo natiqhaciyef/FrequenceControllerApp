@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">FrequenceControllerApp</string>
+
+    <string name="wavetable">Wavetable</string>
+    <string name="pitch_control">Pitch control</string>
+    <string name="frequency">Frequency value</string>
+    <string name="frequency_value">%.1f Hz</string>
 </resources>
