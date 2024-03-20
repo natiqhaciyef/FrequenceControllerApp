@@ -1,6 +1,5 @@
 package com.natiqhaciyef.frequencecontrollerapp.presentation.components
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +20,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -36,12 +35,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.natiqhaciyef.frequencecontrollerapp.R
+import com.natiqhaciyef.frequencecontrollerapp.presentation.behaviours.Wavetable
 import com.natiqhaciyef.frequencecontrollerapp.presentation.ui.theme.IndigoColor
+import com.natiqhaciyef.frequencecontrollerapp.presentation.viewmodel.WavetableViewModel
 
 
 @Composable
 fun ControllingPanel(
-    modifier: Modifier
+    modifier: Modifier,
+    viewModel: WavetableViewModel
 ) {
     Row(
         modifier = modifier
@@ -55,8 +57,8 @@ fun ControllingPanel(
                 .fillMaxHeight(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            PitchControl(modifier = modifier)
-            PlayControl(modifier = modifier)
+            PitchControl(modifier = modifier, viewModel = viewModel)
+            PlayControl(modifier = modifier, viewModel = viewModel)
         }
 
         Column(
@@ -65,17 +67,23 @@ fun ControllingPanel(
             verticalArrangement = Arrangement.SpaceEvenly,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            VolumeControl(modifier = modifier)
+            VolumeControl(modifier = modifier, viewModel = viewModel)
         }
     }
 }
 
 @Composable
 fun PitchControl(
-    modifier: Modifier
+    modifier: Modifier,
+    viewModel: WavetableViewModel
 ) {
-//    var frequency by remember { mutableFloatStateOf(0.0f) }
-    var frequency by rememberSaveable { mutableFloatStateOf(0.0f) }
+    val frequency = viewModel.frequency.observeAsState()
+    val sliderPosition = rememberSaveable {
+        mutableStateOf(
+            viewModel.sliderPositionFromFrequencyInHz(frequency.value!!)
+        )
+    }
+
     Text(
         modifier = modifier
             .padding(top = 20.dp),
@@ -88,14 +96,18 @@ fun PitchControl(
     Slider(
         modifier = modifier
             .padding(horizontal = 10.dp),
-        value = frequency,
-        onValueChange = { frequency = it },
-        valueRange = 40f..3000f
+        value = if (!sliderPosition.value.isNaN()) sliderPosition.value else frequency.value!!,
+        onValueChange = {
+            sliderPosition.value = it
+            viewModel.setFrequencySliderValue(it)
+        },
+        valueRange = 0f..1f
     )
 
     Text(
         modifier = modifier,
-        text = stringResource(id = R.string.frequency_value, frequency),
+        text =
+        stringResource(id = R.string.frequency_value, frequency.value!!),
         color = Color.Black,
         fontSize = 16.sp,
         fontWeight = FontWeight.SemiBold,
@@ -104,7 +116,8 @@ fun PitchControl(
 
 @Composable
 fun PlayControl(
-    modifier: Modifier
+    modifier: Modifier,
+    viewModel: WavetableViewModel
 ) {
     val context = LocalContext.current
     var playLabel by rememberSaveable { mutableStateOf("Play") }
@@ -119,6 +132,8 @@ fun PlayControl(
                 context.getString(R.string.stop)
             else
                 context.getString(R.string.play)
+
+            viewModel.playClicked()
         },
         colors = ButtonDefaults.buttonColors(
             containerColor = IndigoColor
@@ -142,10 +157,11 @@ fun PlayControl(
 
 @Composable
 fun VolumeControl(
-    modifier: Modifier
+    modifier: Modifier,
+    viewModel: WavetableViewModel
 ) {
     val sliderHeight = LocalConfiguration.current.screenHeightDp / 4
-    var volume by rememberSaveable { mutableFloatStateOf(0.0f) }
+    val volume = viewModel.volume.observeAsState()
 
     Icon(
         imageVector = Icons.Filled.VolumeUp,
@@ -156,11 +172,13 @@ fun VolumeControl(
         modifier = modifier
             .width(sliderHeight.dp)
             .rotate(270f),
-        value = volume,
+        value = volume.value!!,
         onValueChange = {
-            volume = it
+            if (!it.isNaN()) {
+                viewModel.setVolumePosition(it)
+            }
         },
-        valueRange = 0f..100f,
+        valueRange = viewModel.volumeRange,
     )
 
     Icon(
@@ -172,7 +190,8 @@ fun VolumeControl(
 
 @Composable
 fun WavetableSelectionPanel(
-    modifier: Modifier
+    modifier: Modifier,
+    viewModel: WavetableViewModel
 ) {
     Row(
         modifier = modifier
@@ -193,22 +212,27 @@ fun WavetableSelectionPanel(
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
             )
-            WavetableSelectionButtons(modifier = modifier)
+            WavetableSelectionButtons(modifier = modifier, viewModel = viewModel)
         }
     }
 }
 
 @Composable
-fun WavetableSelectionButtons(modifier: Modifier) {
+fun WavetableSelectionButtons(
+    modifier: Modifier,
+    viewModel: WavetableViewModel
+) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        for (label in arrayOf("Sine", "Triangle", "Square", "Saw")) {
+        for (label in Wavetable.entries) {
             WavetableButton(
-                label = label,
+                label = stringResource(label.returnStringResource()),
                 modifier = modifier,
-                onClickAction = {}
+                onClickAction = {
+                    viewModel.setWavetableProperty(label)
+                }
             )
         }
     }
